@@ -1,0 +1,63 @@
+# https://www.ory.sh/docs/kratos/self-service/flows/user-login#api-clients
+
+@kratos-public=http://127.0.0.1:4433
+@oathkeeper=http://127.0.0.1:4455
+
+@service-host=http://127.0.0.1:4455
+@kratos-host=http://127.0.0.1:4433
+
+###
+
+#@name without bearer, access denied
+GET {{service-host}}/venue/
+
+> {%
+    client.test("Without Bearer Token, we get access denied", function () {
+        client.assert(response.status === 401, "Response status is not 401");
+    });
+%}
+
+###
+
+#@name Inits a Login Flow
+GET {{kratos-host}}/self-service/login/api
+Accept: application/json
+
+> {%
+    client.global.set('ui-action-url', response.body.ui.action);
+%}
+
+###
+
+#@name Complete Login Flow with password method
+POST {{ui-action-url}}
+Accept: application/json
+Content-Type: application/json
+
+{
+  "identifier": "helmut@mueller.de",
+  "password": "aish7Luphiyaeghe",
+  "method": "password"
+}
+
+> {%
+    client.global.set('session-token', response.body.session_token);
+%}
+
+###
+
+#@name check session, with header (directly with kratos)
+GET {{kratos-host}}/sessions/whoami
+X-Session-Token: {{session-token}}
+
+###
+
+#@name check session, with header (via oathkeeper)
+GET {{oathkeeper}}/.ory/kratos/public/sessions/whoami
+X-Session-Token: {{session-token}}
+
+###
+
+#@name with bearer
+GET {{service-host}}/venue/
+Authorization: Bearer {{session-token}}
