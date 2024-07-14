@@ -7,9 +7,50 @@ services:
     image: nehlsen/venue-service:0.0.1
     build:
       context: VenueService
+#    environment:
+#      - SPRING_DATASOURCE_URL=jdbc:mysql://venue-service-database:3306/venue-service?createDatabaseIfNotExist=true
+    volumes:
+      - ./VenueService/application-sample.yml:/app/application.yml
     networks:
       - intranet
     restart: on-failure
+
+  venue-service-database:
+    image: mysql:5.7
+    environment:
+      - MYSQL_ROOT_PASSWORD=secret
+    volumes:
+      - venue-service-database-data:/var/lib/mysql
+    networks:
+      - intranet
+    ports:
+      - "3306:3306"
+
+# ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### #####
+
+  picture-service:
+    image: nehlsen/picture-service:0.0.1
+    build:
+      context: PictureService
+    volumes:
+      - ./PictureService/application-sample.yml:/app/application.yml
+      - ./.PictureServiceStore:/app/upload-dir
+    networks:
+      - intranet
+    restart: on-failure
+
+  picture-service-database:
+    image: mysql:5.7
+    environment:
+      - MYSQL_ROOT_PASSWORD=secret
+    volumes:
+      - picture-service-database-data:/var/lib/mysql
+    networks:
+      - intranet
+#    ports:
+#      - "3306:3306"
+
+# ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### #####
 
   kratos-migrate:
     image: oryd/kratos:v1.2.0
@@ -87,12 +128,19 @@ services:
 
   mysqld:
     image: mysql:5.7
-    ports:
-      - "3306:3306"
+#    ports:
+#      - "3306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=secret
+    volumes:
+      - mysql-data:/var/lib/mysql
     networks:
       - intranet
+
+volumes:
+  mysql-data:
+  venue-service-database-data:
+  picture-service-database-data:
 
 networks:
   intranet:
