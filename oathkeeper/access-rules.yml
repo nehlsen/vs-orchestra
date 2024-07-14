@@ -80,3 +80,25 @@
       handler: noop
   errors:
     - handler: json
+
+-
+  id: "venue-shot:picture-service"
+  upstream:
+    preserve_host: true
+    url: "http://picture-service:8080"
+    strip_path: /picture
+  match:
+    url: "http://127.0.0.1:4455/picture/<**>"
+    methods:
+      - GET
+      - POST
+  authenticators:
+    -
+      handler: bearer_token
+  authorizer:
+    handler: allow
+  mutators:
+    -
+      handler: noop
+  errors:
+    - handler: json
