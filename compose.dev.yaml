@@ -1,0 +1,144 @@
+# this file is a mish mash of
+# quickstart.yml, quickstart-mysql.yml, quickstart-oathkeeper.yml
+# from https://github.com/ory/kratos/tree/master
+
+services:
+  venue-service:
+    image: nehlsen/venue-service:0.0.1
+    build:
+      context: VenueService
+    volumes:
+      - ./venue-service/application.yml:/app/application.yml
+    networks:
+      - intranet
+    restart: on-failure
+
+  venue-service-database:
+    image: mysql:5.7
+    environment:
+      - MYSQL_ROOT_PASSWORD=secret
+    volumes:
+      - venue-service-database-data:/var/lib/mysql
+    networks:
+      - intranet
+    ports:
+      - "3306:3306"
+
+# ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### #####
+
+  picture-service:
+    image: nehlsen/picture-service:0.0.1
+    build:
+      context: PictureService
+    volumes:
+      - ./picture-service/application.yml:/app/application.yml
+      - ./.PictureServiceStore:/app/upload-dir
+    networks:
+      - intranet
+    restart: on-failure
+
+  picture-service-database:
+    image: mysql:5.7
+    environment:
+      - MYSQL_ROOT_PASSWORD=secret
+    volumes:
+      - picture-service-database-data:/var/lib/mysql
+    networks:
+      - intranet
+#    ports:
+#      - "3306:3306"
+
+# ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### #####
+
+  kratos-migrate:
+    image: oryd/kratos:v1.2.0
+    environment:
+      - DSN=mysql://root:secret@tcp(mysqld:3306)/mysql?max_conns=20&max_idle_conns=4
+    volumes:
+      - type: bind
+        source: ./kratos
+        target: /etc/config/kratos
+    command: -c /etc/config/kratos/kratos.yml migrate sql -e --yes
+    restart: on-failure
+    networks:
+      - intranet
+
+  kratos-selfservice-ui-node:
+    image: oryd/kratos-selfservice-ui-node:v1.2.0
+    environment:
+      - KRATOS_PUBLIC_URL=http://kratos:4433/
+#       - KRATOS_BROWSER_URL=http://127.0.0.1:4433/
+      - COOKIE_SECRET=changeme
+      - CSRF_COOKIE_NAME=ory_csrf_ui
+      - CSRF_COOKIE_SECRET=changeme
+      - PORT=4435
+      - KRATOS_BROWSER_URL=http://127.0.0.1:4455/.ory/kratos/public
+      - JWKS_URL=http://oathkeeper:4456/.well-known/jwks.json
+      - SECURITY_MODE=jwks
+    networks:
+      - intranet
+    restart: on-failure
+    
+  kratos:
+    depends_on:
+      - kratos-migrate
+    image: oryd/kratos:v1.2.0
+    ports:
+      - '4433:4433' # public
+      - '4434:4434' # admin
+    restart: unless-stopped
+    environment:
+      - DSN=mysql://root:secret@tcp(mysqld:3306)/mysql?max_conns=20&max_idle_conns=4
+      - SERVE_PUBLIC_BASE_URL=http://127.0.0.1:4455/.ory/kratos/public/
+      - LOG_LEVEL=trace
+    command: serve -c /etc/config/kratos/kratos.yml --dev --watch-courier
+    volumes:
+      - type: bind
+        source: ./kratos
+        target: /etc/config/kratos
+    networks:
+      - intranet
+
+  oathkeeper:
+    image: oryd/oathkeeper:v0.40
+    depends_on:
+      - kratos
+    ports:
+      - 4455:4455
+      - 4456:4456
+    command:
+      serve proxy -c "/etc/config/oathkeeper/oathkeeper.yml"
+    environment:
+      - LOG_LEVEL=debug
+    restart: on-failure
+    networks:
+      - intranet
+    volumes:
+      - ./oathkeeper:/etc/config/oathkeeper
+
+  mailslurper:
+    image: oryd/mailslurper:latest-smtps
+    ports:
+      - '4436:4436'
+      - '4437:4437'
+    networks:
+      - intranet
+
+  mysqld:
+    image: mysql:5.7
+#    ports:
+#      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=secret
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - intranet
+
+volumes:
+  mysql-data:
+  venue-service-database-data:
+  picture-service-database-data:
+
+networks:
+  intranet:

@@ -4,13 +4,9 @@
 
 services:
   venue-service:
-    image: nehlsen/venue-service:0.0.1
-    build:
-      context: VenueService
-#    environment:
-#      - SPRING_DATASOURCE_URL=jdbc:mysql://venue-service-database:3306/venue-service?createDatabaseIfNotExist=true
+    image: ghcr.io/nehlsen/vs-venue-service:main
     volumes:
-      - ./VenueService/application-sample.yml:/app/application.yml
+      - ./venue-service/application.yml:/app/application.yml
     networks:
       - intranet
     restart: on-failure
@@ -23,18 +19,15 @@ services:
       - venue-service-database-data:/var/lib/mysql
     networks:
       - intranet
-    ports:
-      - "3306:3306"
+    restart: on-failure
 
 # ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### #####
 
   picture-service:
-    image: nehlsen/picture-service:0.0.1
-    build:
-      context: PictureService
+    image: ghcr.io/nehlsen/vs-picture-service:main
     volumes:
-      - ./PictureService/application-sample.yml:/app/application.yml
-      - ./.PictureServiceStore:/app/upload-dir
+      - ./picture-service/application.yml:/app/application.yml
+      - ./.picture-service-store:/app/upload-dir
     networks:
       - intranet
     restart: on-failure
@@ -47,8 +40,6 @@ services:
       - picture-service-database-data:/var/lib/mysql
     networks:
       - intranet
-#    ports:
-#      - "3306:3306"
 
 # ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### #####
 
